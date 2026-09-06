@@ -1,17 +1,64 @@
+<p align="center">
+  <img src="docs/banner.svg" alt="CPU Pulse: a glowing processor die for the Omarchy bar" width="100%">
+</p>
+
+<p align="center">
+  <a href="#install"><img alt="Omarchy plugin" src="https://img.shields.io/badge/Omarchy-bar%20widget-43f2a1?style=flat-square&labelColor=0b141d"></a>
+  <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-efcc45?style=flat-square&labelColor=0b141d"></a>
+  <a href="https://github.com/nixfred/ram.plugin.omarchy"><img alt="Sibling of RAM Pulse" src="https://img.shields.io/badge/sibling-RAM%20Pulse-63c89e?style=flat-square&labelColor=0b141d"></a>
+  <img alt="No dependencies" src="https://img.shields.io/badge/deps-Python%203%20only-91a5b0?style=flat-square&labelColor=0b141d">
+</p>
+
 # CPU Pulse
 
-An animated, glowing processor die for the Omarchy top bar. Green with idle headroom → yellow at 50% busy → dark red when the processor is pegged. Every core is a cell on the die that brightens with its own load, and a clock beam sweeps faster as load rises. Left-click opens the dashboard; right-click offers four saved readouts: percentage busy, percentage idle, package temperature, average clock. All readouts use one decimal and explicit units.
+An animated, glowing processor die for the Omarchy top bar. Green with idle headroom → yellow at 50% busy → dark red when the processor is pegged. Every core is a cell on the die that brightens with its own load, and a clock beam sweeps faster as load rises.
+
+<p align="center">
+  <img src="docs/bar.gif" alt="RAM Pulse and CPU Pulse side by side on the Omarchy bar" width="520">
+  <br>
+  <sub>RAM Pulse on the left, CPU Pulse on the right. Same chip, same colour language.</sub>
+</p>
+
+Left-click opens the dashboard. Right-click offers four saved readouts: percentage busy, percentage idle, package temperature, average clock. All readouts use one decimal and explicit units.
 
 CPU Pulse is the sibling of [RAM Pulse](https://github.com/nixfred/ram.plugin.omarchy): same chip, same colours, same dashboard layout, so the two sit together on the bar.
 
-The dashboard includes:
+## The dashboard
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/overview.png" alt="Overview tab: hero die, busy percentage, clock, load, pressure, continuous history and every thread">
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/hogs.png" alt="CPU hogs tab: top processes by CPU time with click-to-focus">
+    </td>
+  </tr>
+  <tr>
+    <td valign="top"><b>Overview.</b> Hero die with per-thread cells, busy percentage, package temperature, average and peak clock, load average against thread count, CPU pressure, 1-hour / 24-hour / 7-day history, and a bar per logical CPU with its clock and core temperature.</td>
+    <td valign="top"><b>CPU hogs.</b> Top 24 processes by CPU time, eight per page, with thread counts. Click a row to focus its existing window or attached Herdr / tmux pane. Background processes report details instead.</td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/lab.png" alt="Processor lab tab: time breakdown, scheduler counters, sensors and power profile">
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/readout.png" alt="Right-click readout picker with four modes" width="360">
+    </td>
+  </tr>
+  <tr>
+    <td valign="top"><b>Processor lab.</b> Full time breakdown (user, system, nice, I/O wait, IRQ, steal), context switches, interrupts, fork rate, runnable and blocked tasks, full CPU pressure, frequency driver and governor, turbo state, throttle count, every CPU temperature sensor, and a power profile card.</td>
+    <td valign="top"><b>Readout picker.</b> Right-click the chip to choose what lives beside it. Keys 1–4 pick a mode; the choice is saved to your bar layout.</td>
+  </tr>
+</table>
+
+## What it does
 
 - Animated die with per-thread cells and orbiting charge, busy percentage, average and peak clock, load average against thread count, and CPU pressure (PSI).
 - Continuous 1-hour, 24-hour and 7-day history of busy percentage and package temperature, with the per-bucket busy peak as a faint envelope and hover readings. Missing history is left blank; shutdowns and recording gaps break the trace.
 - Every thread: load bar, delivered clock and core temperature for each logical CPU.
-- Top 24 processes by CPU time, eight per page, with thread counts. Click to focus the existing app or attached Herdr/tmux pane. Exact Boomux terminal titles can resolve an existing terminal too. Background processes report details. Browser children focus their browser window, not an individual tab.
-- Processor lab with the full time breakdown (user, system, nice, I/O wait, IRQ, steal), context switches, interrupts, fork rate, runnable and blocked task counts, full CPU pressure, frequency driver and governor, turbo state, throttle count, and every CPU temperature sensor.
-- Power profile switching through `powerprofilesctl` (power-saver, balanced, performance). This goes through power-profiles-daemon and polkit as the session user; it is immediately reversible from the same card.
+- Top 24 processes by CPU time. Exact Boomux terminal titles can resolve an existing terminal too. Browser children focus their browser window, not an individual tab.
+- Power profile switching through `powerprofilesctl` (power-saver, balanced, performance). This goes through power-profiles-daemon and polkit as the session user and is immediately reversible from the same card.
 
 There are no process termination, renice, affinity, frequency locking, or privileged tuning actions. Processes and window identities are revalidated on every focus click. Session routing uses argument arrays and validated IDs, never interpolated shell commands. Profile names are checked against a fixed list. No process command lines or credentials are saved.
 
@@ -56,3 +103,19 @@ The clock is `scaling_cur_freq` averaged across threads. On `intel_pstate` and s
 Temperature prefers the `coretemp` package sensor, then the `x86_pkg_temp`, `TCPU` or SoC thermal zone. Core temperatures map through `topology/core_id`, so sibling threads share one reading. Package power is shown only when RAPL energy counters are readable without privilege, which most distributions do not allow.
 
 References: [Linux /proc/stat](https://docs.kernel.org/filesystems/proc.html), [PSI](https://docs.kernel.org/accounting/psi.html), [cpufreq sysfs](https://docs.kernel.org/admin-guide/pm/cpufreq.html), [intel_pstate](https://docs.kernel.org/admin-guide/pm/intel_pstate.html), [power-profiles-daemon](https://gitlab.freedesktop.org/upower/power-profiles-daemon).
+
+## Layout
+
+| File | Role |
+|---|---|
+| `Panel.qml` | Bar widget, dashboard, readout picker, IPC handler |
+| `CpuChip.qml` | The animated die (compact on the bar, large in the hero card) |
+| `HistoryGraph.qml` | Busy / temperature history with peak envelope and hover |
+| `Model.js` | Colour ramp, formatting, readout modes |
+| `cpu_pulse.py` | Telemetry daemon, SQLite history, focus and profile actions |
+| `install.py` | Copies the plugin, enables the service, appends to the bar with backups |
+| `tests/` | Python unit tests and a Node check of the model helpers |
+
+## License
+
+MIT. See [LICENSE](LICENSE).

@@ -11,7 +11,7 @@ home=Path.home()
 config=home/'.config/omarchy/shell.json'
 dest=home/'.config/omarchy/plugins/nixfred.cpu-pulse'
 unit=home/'.config/systemd/user/cpu-pulse.service'
-stamp=datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+stamp=datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f')
 backup=home/'.local/state/omarchy/backups'/('cpu-pulse-'+stamp)
 backup.mkdir(parents=True)
 shutil.copy2(config,backup/'shell.json')
@@ -26,7 +26,7 @@ shutil.copy2(source/'cpu-pulse.service',unit)
 data=json.loads(config.read_text())
 layout=data['bar']['layout']
 for section in ('left','center','right'):
-    layout[section]=[entry for entry in layout[section] if entry.get('id')!='nixfred.cpu-pulse']
+    layout[section]=[entry for entry in layout.get(section,[]) if (entry.get('id') if isinstance(entry,dict) else entry)!='nixfred.cpu-pulse']
 layout['right'].append({'id':'nixfred.cpu-pulse','displayMode':0,'animated':True})
 tmp=config.with_suffix('.cpu-pulse.tmp')
 tmp.write_text(json.dumps(data,indent=2)+'\n');tmp.replace(config)

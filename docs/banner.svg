@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-label="CPU Pulse: a glowing processor die for the Omarchy bar">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b141d"/>
+      <stop offset="1" stop-color="#101c26"/>
+    </linearGradient>
+    <radialGradient id="aura" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#43f2a1" stop-opacity="0.55"/>
+      <stop offset="0.55" stop-color="#43f2a1" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#43f2a1" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="auraHot" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#efcc45" stop-opacity="0.5"/>
+      <stop offset="0.55" stop-color="#efcc45" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#efcc45" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ramp" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#43f2a1"/>
+      <stop offset="0.5" stop-color="#efcc45"/>
+      <stop offset="1" stop-color="#850d29"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="softglow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="1.5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <path d="M24 0H0V24" fill="none" stroke="#1a2833" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="360" rx="24" fill="url(#bg)"/>
+  <rect width="1200" height="360" rx="24" fill="url(#grid)" opacity="0.6"/>
+  <rect x="0.5" y="0.5" width="1199" height="359" rx="24" fill="none" stroke="#273843"/>
+
+  <!-- The die -->
+  <g transform="translate(200 180)">
+    <circle r="160" fill="url(#aura)"/>
+    <g fill="none" stroke="#43f2a1">
+      <circle r="88" stroke-opacity="0.14"/>
+      <circle r="102" stroke-opacity="0.18"/>
+      <circle r="116" stroke-opacity="0.22"/>
+      <path d="M 88 0 A 88 88 0 0 1 62 62" stroke-width="2.5" stroke-opacity="0.9" stroke-linecap="round" filter="url(#softglow)"/>
+      <path d="M -102 0 A 102 102 0 0 1 -72 -72" stroke-width="2.5" stroke-opacity="0.8" stroke-linecap="round" filter="url(#softglow)"/>
+      <path d="M 0 116 A 116 116 0 0 1 -82 82" stroke-width="2.5" stroke-opacity="0.7" stroke-linecap="round" filter="url(#softglow)"/>
+    </g>
+    <!-- pins -->
+    <g stroke="#43f2a1" stroke-width="3" stroke-linecap="round" filter="url(#softglow)">
+      <path d="M-36 -58V-72 M-12 -58V-72 M12 -58V-72 M36 -58V-72"/>
+      <path d="M-36 58V72 M-12 58V72 M12 58V72 M36 58V72"/>
+      <path d="M-58 -36H-72 M-58 -12H-72 M-58 12H-72 M-58 36H-72"/>
+      <path d="M58 -36H72 M58 -12H72 M58 12H72 M58 36H72"/>
+    </g>
+    <g fill="#43f2a1">
+      <circle cx="-36" cy="-84" r="2.4" opacity="0.9"/>
+      <circle cx="12" cy="-92" r="2.4" opacity="0.6"/>
+      <circle cx="84" cy="36" r="2.4" opacity="0.8"/>
+      <circle cx="-90" cy="12" r="2.4" opacity="0.5"/>
+      <circle cx="36" cy="88" r="2.4" opacity="0.7"/>
+    </g>
+    <!-- body -->
+    <rect x="-58" y="-58" width="116" height="116" rx="6" fill="#0b141b" stroke="#43f2a1" stroke-width="3" filter="url(#glow)"/>
+    <!-- 4x3 core cells, brightness = load -->
+    <g fill="#43f2a1">
+      <rect x="-50" y="-50" width="22" height="30" rx="2" opacity="0.28"/>
+      <rect x="-24" y="-50" width="22" height="30" rx="2" opacity="0.62"/>
+      <rect x="2"   y="-50" width="22" height="30" rx="2" opacity="0.40"/>
+      <rect x="28"  y="-50" width="22" height="30" rx="2" opacity="0.84"/>
+      <rect x="-50" y="-15" width="22" height="30" rx="2" opacity="0.52"/>
+      <rect x="-24" y="-15" width="22" height="30" rx="2" opacity="0.90"/>
+      <rect x="2"   y="-15" width="22" height="30" rx="2" opacity="0.34"/>
+      <rect x="28"  y="-15" width="22" height="30" rx="2" opacity="0.58"/>
+      <rect x="-50" y="20"  width="22" height="30" rx="2" opacity="0.70"/>
+      <rect x="-24" y="20"  width="22" height="30" rx="2" opacity="0.22"/>
+      <rect x="2"   y="20"  width="22" height="30" rx="2" opacity="0.66"/>
+      <rect x="28"  y="20"  width="22" height="30" rx="2" opacity="0.46"/>
+    </g>
+    <!-- hot-spot highlights on the busiest cells -->
+    <g fill="#ffffff">
+      <rect x="35" y="-41" width="8" height="12" rx="1" opacity="0.28"/>
+      <rect x="-17" y="-6" width="8" height="12" rx="1" opacity="0.34"/>
+    </g>
+    <!-- clock beam -->
+    <rect x="6" y="-56" width="14" height="112" fill="#ffffff" opacity="0.18"/>
+    <rect x="11" y="-56" width="3" height="112" fill="#ffffff" opacity="0.45"/>
+  </g>
+
+  <!-- Title block -->
+  <g font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif" fill="#eff7fa">
+    <text x="420" y="132" font-size="64" font-weight="700" letter-spacing="10">CPU PULSE</text>
+    <text x="422" y="172" font-size="20" fill="#91a5b0">Your processor, in motion. A living die for the Omarchy bar.</text>
+    <g font-size="14" fill="#c3d3dc">
+      <rect x="422" y="200" width="118" height="30" rx="9" fill="#14222b" stroke="#2a3b47"/>
+      <text x="481" y="220" text-anchor="middle">Per-thread load</text>
+      <rect x="550" y="200" width="98" height="30" rx="9" fill="#14222b" stroke="#2a3b47"/>
+      <text x="599" y="220" text-anchor="middle">Clocks · °C</text>
+      <rect x="658" y="200" width="112" height="30" rx="9" fill="#14222b" stroke="#2a3b47"/>
+      <text x="714" y="220" text-anchor="middle">CPU pressure</text>
+      <rect x="780" y="200" width="118" height="30" rx="9" fill="#14222b" stroke="#2a3b47"/>
+      <text x="839" y="220" text-anchor="middle">7-day history</text>
+      <rect x="908" y="200" width="150" height="30" rx="9" fill="#14222b" stroke="#2a3b47"/>
+      <text x="983" y="220" text-anchor="middle">Click-to-focus hogs</text>
+    </g>
+    <!-- ramp legend -->
+    <rect x="422" y="262" width="636" height="8" rx="4" fill="url(#ramp)"/>
+    <g font-size="12" fill="#7e959f" letter-spacing="1.5">
+      <text x="422" y="292">IDLE · GREEN</text>
+      <text x="740" y="292" text-anchor="middle">HALF BUSY · YELLOW</text>
+      <text x="1058" y="292" text-anchor="end">PEGGED · RED</text>
+    </g>
+  </g>
+
+  <!-- Sibling badge -->
+  <g transform="translate(1058 62)" font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif">
+    <rect x="-150" y="-18" width="150" height="36" rx="18" fill="#11251f" stroke="#2c5547"/>
+    <circle cx="-132" cy="0" r="4" fill="#63c89e"/>
+    <text x="-120" y="5" font-size="13" fill="#abc4b9">Sibling of RAM Pulse</text>
+  </g>
+</svg>

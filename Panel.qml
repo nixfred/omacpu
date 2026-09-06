@@ -13,7 +13,7 @@ Panel {
     implicitWidth: button.implicitWidth
     implicitHeight: button.implicitHeight
     readonly property string stateDir: (Quickshell.env('XDG_STATE_HOME') || Quickshell.env('HOME')+'/.local/state')+'/cpu-pulse'
-    readonly property string helper: String(Qt.resolvedUrl('cpu_pulse.py')).replace(/^file:\/\//,'')
+    readonly property string helper: decodeURIComponent(String(Qt.resolvedUrl('cpu_pulse.py')).replace(/^file:\/\//,''))
     property var cpu: ({})
     property var histories: ({})
     property int tab: 0
@@ -27,6 +27,7 @@ Panel {
     readonly property color tint: stale ? '#71838c' : Model.ramp(cpu.idlePct)
     readonly property real pressure: cpu.psi && cpu.psi.some ? cpu.psi.some.avg10 : 0
     readonly property var rows: cpu.hogs || []
+    onRowsChanged: page=Math.min(page,Math.max(0,Math.ceil(rows.length/8)-1))
     readonly property var cores: cpu.cores || []
     readonly property var coreLoads: cores.map(function(c){return c.busy})
     readonly property var chart: histories[String(range)] || {points:[],seconds:range,now:now,bucket:15,count:0,peak:0}

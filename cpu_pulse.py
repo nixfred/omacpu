@@ -11,7 +11,7 @@ import sqlite3
 import subprocess
 import time
 
-STATE = Path(os.environ.get('XDG_STATE_HOME', str(Path.home() / '.local/state'))) / 'cpu-pulse'
+STATE = Path(os.environ.get('XDG_STATE_HOME') or str(Path.home() / '.local/state')) / 'cpu-pulse'
 ENV_KEYS = {'HERDR_ENV', 'HERDR_SOCKET_PATH', 'HERDR_WORKSPACE_ID', 'HERDR_TAB_ID', 'HERDR_PANE_ID', 'TMUX', 'TMUX_PANE', 'BOOMUX_SHELL_ID'}
 PROFILES = ('power-saver', 'balanced', 'performance')
 SYS_CPU = Path('/sys/devices/system/cpu')
@@ -81,7 +81,7 @@ def target_for(p, procs, wins):
     # window needs no launcher and cannot create or terminate a session.
     shell = env.get('BOOMUX_SHELL_ID', '')
     if shell:
-        match = [c for c in wins if str(c.get('title', '')).startswith('boomux:shell:') and str(c.get('title', '')).split(' ')[0].endswith(':' + shell)]
+        match = [c for c in wins if str(c.get('title', '')).split(' ')[0] == 'boomux:shell:' + shell]
         if match:
             w = match[0]
     if not shell and env.get('HERDR_ENV') == '1' and env.get('HERDR_PANE_ID'):
@@ -125,8 +125,8 @@ def hogs(previous=None, now=None):
     from the last scan; a process seen for the first time reports its lifetime
     average instead of being hidden. Returns (rows, ticks) so the daemon can
     carry the new tick table forward."""
-    now = now or time.time()
-    uptime = float(read('/proc/uptime').split()[0] or 0)
+    now = time.monotonic() if now is None else now
+    uptime = float((read('/proc/uptime').split() or ['0'])[0])
     procs = all_processes()
     ticks = {}
     for p in procs.values():
@@ -138,7 +138,7 @@ def hogs(previous=None, now=None):
             p['sampled'] = True
         else:
             age = max(0.5, uptime - int(p['start']) / CLK)
-            p['cpu'] = p['ticks'] / CLK / age * 100
+            p['cpu'] = p['ticks'] / CLK / age * 100 if uptime > 0 else 0
             p['sampled'] = False
     wins = clients()
     rows = sorted(procs.values(), key=lambda p: (p['cpu'], p['ticks']), reverse=True)[:24]
@@ -154,27 +154,36 @@ def cpu_lines(raw):
     result = {}
     for line in raw.splitlines():
         parts = line.split()
-        if parts and parts[0].startswith('cpu'):
+        if len(parts) >= 5 and re.fullmatch(r'cpu[0-9]*', parts[0]):
             try:
-                result[parts[0]] = [int(v) for v in parts[1:9]]
+                values = [int(v) for v in parts[1:9]]
+                result[parts[0]] = values + [0] * (8 - len(values))
             except ValueError:
                 pass
     return result
 
 def usage(now, then):
     """Busy percentage and per-field breakdown between two /proc/stat cpu rows."""
-    delta = [max(0, a - b) for a, b in zip(now, then)] if then else [0] * 8
+    # A reset/wrap invalidates this interval; iowait alone may decrease normally.
+    reset = then and any(a < b for i, (a, b) in enumerate(zip(now, then)) if i != 4)
+    delta = [max(0, a - b) for a, b in zip(now, then)] if then and not reset else [0] * 8
     total = sum(delta)
     if total <= 0:
         return 0.0, {k: 0.0 for k in STAT_FIELDS}
     breakdown = {k: v / total * 100 for k, v in zip(STAT_FIELDS, delta)}
-    return 100 - breakdown['idle'] - breakdown['iowait'], breakdown
+    return max(0.0, min(100.0, 100 - breakdown['idle'] - breakdown['iowait'])), breakdown
 
 def temperatures():
     package, cores, sensors = None, {}, []
     for h in sorted(Path('/sys/class/hwmon').glob('hwmon*')):
         if read(h / 'name').strip() != 'coretemp':
             continue
+        package_id = None
+        for label_file in h.glob('temp*_label'):
+            match = re.fullmatch(r'Package id (\d+)', read(label_file).strip())
+            if match:
+                package_id = int(match[1])
+                break
         for f in sorted(h.glob('temp*_input'), key=lambda f: int(re.sub(r'\D', '', f.name) or 0)):
             label = read(f.with_name(f.name.replace('_input', '_label'))).strip()
             value = read_int(f)
@@ -184,7 +193,7 @@ def temperatures():
             if label.startswith('Package id'):
                 package = value if package is None else max(package, value)
             elif label.startswith('Core '):
-                cores[label[5:]] = value
+                cores[(package_id, label[5:])] = value
             sensors.append({'label': label, 'temp': value})
     fallback = None
     for z in sorted(Path('/sys/class/thermal').glob('thermal_zone*'), key=lambda z: int(re.sub(r'\D', '', z.name) or 0)):
@@ -201,6 +210,10 @@ def temperatures():
 
 def frequency():
     base = SYS_CPU / 'cpu0/cpufreq'
+    for candidate in sorted(SYS_CPU.glob('cpu[0-9]*/cpufreq')):
+        if read_int(candidate.parent / 'online') != 0:
+            base = candidate
+            break
     turbo = None
     no_turbo = read_int(SYS_CPU / 'intel_pstate/no_turbo')
     boost = read_int(SYS_CPU / 'cpufreq/boost')
@@ -218,8 +231,9 @@ def metrics(previous=None):
     if 'cpu' not in rows:
         raise RuntimeError('Kernel CPU telemetry unavailable')
     ts = time.time()
+    monotonic = time.monotonic()
     old = previous.get('raw', {}) if previous else {}
-    elapsed = ts - previous['ts'] if previous else 0
+    elapsed = monotonic - previous['monotonic'] if previous else 0
     busy, breakdown = usage(rows['cpu'], old.get('cpu'))
     core_temp, core_temps, sensors = temperatures()
     cores = []
@@ -227,11 +241,14 @@ def metrics(previous=None):
         index = int(name[3:])
         core_busy, _ = usage(rows[name], old.get(name))
         core_id = read_int(SYS_CPU / f'cpu{index}/topology/core_id')
-        cores.append({'id': index, 'core': core_id, 'busy': core_busy,
+        if core_id is not None and core_id < 0:
+            core_id = None
+        package_id = read_int(SYS_CPU / f'cpu{index}/topology/physical_package_id')
+        cores.append({'id': index, 'core': core_id, 'package': package_id, 'busy': core_busy,
                       'freq': read_int(SYS_CPU / f'cpu{index}/cpufreq/scaling_cur_freq'),
-                      'temp': core_temps.get(str(core_id))})
+                      'temp': core_temps.get((package_id, str(core_id)), core_temps.get((None, str(core_id))))})
     threads = len(cores) or 1
-    physical = len({c['core'] for c in cores if c['core'] is not None}) or threads
+    physical = len({(c['package'], c['core']) if c['core'] is not None else ('cpu', c['id']) for c in cores}) or threads
     counters = {}
     for line in raw.splitlines():
         parts = line.split()
@@ -255,14 +272,20 @@ def metrics(previous=None):
                 'core': sum(read_int(f) or 0 for f in SYS_CPU.glob('cpu*/thermal_throttle/core_throttle_count'))}
     watts = None
     energy = read_int('/sys/class/powercap/intel-rapl:0/energy_uj')
-    if energy is not None and previous and previous.get('energy') is not None and elapsed > 0 and energy >= previous['energy']:
-        watts = (energy - previous['energy']) / 1e6 / elapsed
+    if energy is not None and previous and previous.get('energy') is not None and elapsed > 0:
+        delta = energy - previous['energy']
+        if delta < 0:
+            limit = read_int('/sys/class/powercap/intel-rapl:0/max_energy_range_uj')
+            if limit and 0 <= energy < limit and 0 <= previous['energy'] < limit:
+                delta += limit
+        if delta >= 0:
+            watts = delta / 1e6 / elapsed
     model = ''
     for line in read('/proc/cpuinfo').splitlines():
         if line.startswith('model name'):
             model = line.partition(':')[2].strip()
             break
-    return {'ts': ts, 'warm': bool(old.get('cpu')), 'busyPct': busy, 'idlePct': 100 - busy, 'breakdown': breakdown, 'cores': cores,
+    return {'ts': ts, 'monotonic': monotonic, 'warm': bool(old.get('cpu')), 'busyPct': busy, 'idlePct': 100 - busy, 'breakdown': breakdown, 'cores': cores,
             'threads': threads, 'physical': physical, 'model': model[:80],
             'load': [load1, load5, load15], 'loadPct': load1 / threads * 100,
             'running': counters.get('procs_running', 0), 'blocked': counters.get('procs_blocked', 0),
@@ -278,15 +301,15 @@ def db_open():
     return db
 
 def record(db, m):
-    db.execute('INSERT OR REPLACE INTO samples VALUES (?,?,?,?,?,?)', (m['ts'], m['busyPct'], m['temp'] if m['temp'] is not None else 0, m['psi'].get('some', {}).get('avg10', 0), m['loadPct'], read('/proc/sys/kernel/random/boot_id').strip()))
+    db.execute('INSERT OR REPLACE INTO samples VALUES (?,?,?,?,?,?)', (m['ts'], m['busyPct'], m['temp'], m['psi'].get('some', {}).get('avg10', 0), m['loadPct'], read('/proc/sys/kernel/random/boot_id').strip()))
     db.execute('DELETE FROM samples WHERE ts < ?', (m['ts']-7*86400,))
     db.commit()
 
 def history(db, seconds, now=None):
-    now = now or time.time()
+    now = time.time() if now is None else now
     bucket = max(15, seconds/240)
     # Boot is part of each bucket; never connect a line across a reboot.
-    rows = db.execute('SELECT MIN(ts), AVG(busy), MAX(busy), AVG(temp), MAX(psi), COUNT(*), boot FROM samples WHERE ts>=? AND ts<=? GROUP BY CAST(ts/? AS INTEGER), boot ORDER BY MIN(ts)', (now-seconds, now, bucket)).fetchall()
+    rows = db.execute('SELECT MIN(ts), AVG(busy), MAX(busy), AVG(NULLIF(temp, 0)), MAX(psi), COUNT(*), boot FROM samples WHERE ts>=? AND ts<=? GROUP BY CAST(ts/? AS INTEGER), boot ORDER BY MIN(ts)', (now-seconds, now, bucket)).fetchall()
     return {'seconds': seconds, 'bucket': bucket, 'now': now, 'points': rows, 'count': sum(r[5] for r in rows), 'peak': max((r[2] for r in rows), default=0)}
 
 def atomic(name, value):
@@ -315,7 +338,7 @@ def daemon():
                     atomic('history.json', {str(s): history(db, s, m['ts']) for s in (3600, 86400, 604800)})
                     last_history = start
                 if start-last_procs >= 9:
-                    rows, ticks = hogs(ticks, m['ts'])
+                    rows, ticks = hogs(ticks, m['monotonic'])
                     last_procs = start
                 m['hogs'] = rows
                 if m['warm']:
@@ -334,6 +357,10 @@ def focus(pid, start):
     target = target_for(p, all_processes(), clients())
     if not target:
         raise RuntimeError('No existing window or attached session for this process.')
+    # Routing may take seconds. Reject a PID recycled while it was being resolved.
+    current = process(pid)
+    if not current or current['start'] != start or Path(f'/proc/{pid}').stat().st_uid != os.getuid():
+        raise RuntimeError('Process exited or identity changed. Refresh the list.')
     host = target.get('host', {})
     if host.get('kind') == 'herdr':
         for kind, pattern in [('workspace', r'w[\w-]{1,32}'), ('tab', r'w[\w-]{1,32}:t[\w-]{1,32}'), ('pane', r'w[\w-]{1,32}:p[\w-]{1,32}')]:

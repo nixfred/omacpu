@@ -23,6 +23,7 @@ Item {
     onTintChanged: canvas.requestPaint()
     onLevelChanged: canvas.requestPaint()
     onCoresChanged: canvas.requestPaint()
+    onAnimateChanged: canvas.requestPaint()
     Canvas {
         id: canvas
         anchors.fill: parent

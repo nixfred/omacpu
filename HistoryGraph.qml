@@ -8,6 +8,7 @@ Item {
     property color heat: '#ffa86b'
     property int hoverIndex: -1
     readonly property var points: historyData.points || []
+    readonly property var hoverPoint: points[hoverIndex] || null
     onHistoryDataChanged: { hoverIndex=-1; graph.requestPaint() }
     onTintChanged: graph.requestPaint()
     Canvas {
@@ -50,19 +51,19 @@ Item {
         }
     }
     Rectangle {
-        visible: root.hoverIndex >= 0
-        x: root.hoverIndex >= 0 ? Math.max(0,Math.min(parent.width-38,(root.points[root.hoverIndex][0]-(root.historyData.now-root.historyData.seconds))/root.historyData.seconds*(parent.width-38))) : 0
+        visible: root.hoverPoint !== null
+        x: root.hoverPoint ? Math.max(0,Math.min(parent.width-38,(root.hoverPoint[0]-(root.historyData.now-root.historyData.seconds))/root.historyData.seconds*(parent.width-38))) : 0
         y: 8; width: 1; height: parent.height-34; color: '#71878f'
     }
     Rectangle {
-        visible: root.hoverIndex >= 0
+        visible: root.hoverPoint !== null
         anchors.top: parent.top; anchors.horizontalCenter: parent.horizontalCenter
         width: hoverText.implicitWidth+20; height: 27; radius: 7; color:'#17232d';border.color:'#40525f'
         Text {
             id: hoverText; anchors.centerIn:parent; color:'#edf5f7';font.pixelSize:11
             text: {
-                if(root.hoverIndex<0) return ''
-                var p=root.points[root.hoverIndex]
+                var p=root.hoverPoint
+                if(!p) return ''
                 return Qt.formatDateTime(new Date(p[0]*1000),'ddd h:mm AP')+'  ·  CPU '+Model.pct(p[1])+'  ·  peak '+Model.pct(p[2])+'  ·  '+(p[3]>0?Model.temp(p[3]):'no temp')
             }
         }
