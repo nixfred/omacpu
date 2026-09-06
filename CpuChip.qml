@@ -54,12 +54,12 @@ Item {
             // burst lights up without a hard cut.
             var values=root.cores && root.cores.length?root.cores:[root.busy]
             var n=values.length, cols=Math.ceil(Math.sqrt(n)), rows=Math.ceil(n/cols)
-            if(root.shown.length!==n) root.shown=values.slice()
+            if(root.shown.length!==n) root.shown=values.map(function(v){return Model.clamp(v,0,100)/100})
             var gap=root.compact?1:3, inner=body-4, cw=(inner-gap*(cols+1))/cols, ch=(inner-gap*(rows+1))/rows
             for(var i=0;i<n;i++){
                 var target=Model.clamp(values[i],0,100)/100
                 root.shown[i]=root.animate?root.shown[i]+(target-root.shown[i])*0.12:target
-                var v=root.shown[i], col=i%cols, row=Math.floor(i/cols)
+                var v=Model.clamp(root.shown[i],0,1), col=i%cols, row=Math.floor(i/cols)
                 var px=x+2+gap+col*(cw+gap), py=y+2+gap+row*(ch+gap)
                 c.fillStyle=Qt.alpha(root.tint,0.10+0.80*v)
                 c.fillRect(px,py,cw,ch)
