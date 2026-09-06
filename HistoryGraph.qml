@@ -9,13 +9,17 @@ Item {
     property int hoverIndex: -1
     readonly property var points: historyData.points || []
     readonly property var hoverPoint: points[hoverIndex] || null
-    onHistoryDataChanged: { hoverIndex=-1; graph.requestPaint() }
-    onTintChanged: graph.requestPaint()
+    // History keeps landing every 15s while the dashboard is closed. Painting
+    // for it then is wasted; the graph catches up when it becomes visible.
+    function repaint() { if (root.visible) graph.requestPaint() }
+    onHistoryDataChanged: { hoverIndex=-1; repaint() }
+    onTintChanged: repaint()
+    onVisibleChanged: repaint()
     Canvas {
         id: graph
         anchors.fill: parent
-        onWidthChanged: requestPaint()
-        onHeightChanged: requestPaint()
+        onWidthChanged: root.repaint()
+        onHeightChanged: root.repaint()
         onPaint: {
             var c=getContext('2d'), w=width-38, h=height-26
             c.reset();c.clearRect(0,0,width,height)

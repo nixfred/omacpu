@@ -5,6 +5,9 @@ import ".." as Pulse
 TestCase {
     name: "CpuPulseWidgets"
     when: windowShown
+    // The die only paints while it is actually on screen, so the case itself
+    // has to be shown or nothing under test ever repaints.
+    visible: true
     width: 740; height: 240
 
     Pulse.HistoryGraph { id: graph; width: 700; height: 139 }
