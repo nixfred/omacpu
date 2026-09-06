@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "nixfred.cpu-pulse",
+  "name": "CPU Pulse",
+  "version": "1.0.0",
+  "author": "Fred Nix",
+  "license": "MIT",
+  "description": "A living processor die: per-thread load, clocks, temperature, CPU pressure, seven-day history, and focus-only CPU hogs.",
+  "kinds": ["bar-widget"],
+  "entryPoints": {"barWidget": "Panel.qml"},
+  "barWidget": {
+    "displayName": "CPU Pulse",
+    "description": "Animated CPU load, clock, temperature, pressure and persistent seven-day history. Right-click to choose a readout.",
+    "category": "System",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}

@@ -1,0 +1,16 @@
+[Unit]
+Description=CPU Pulse continuous processor history
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 %h/.config/omarchy/plugins/nixfred.cpu-pulse/cpu_pulse.py daemon
+Restart=on-failure
+RestartSec=5
+UMask=0077
+Nice=10
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=graphical-session.target

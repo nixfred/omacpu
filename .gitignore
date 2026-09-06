@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.agents/
+.codex/
+# Full-desktop verification captures stay local.
+evidence/
+# Runtime telemetry and local databases are not source.
+*.sqlite3
+*.sqlite3-*
+snapshot.json
+history.json
