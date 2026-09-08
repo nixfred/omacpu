@@ -50,6 +50,14 @@ CPU Pulse is the sibling of [RAM Pulse](https://github.com/nixfred/ram.plugin.om
     <td valign="top"><b>Processor lab.</b> Full time breakdown (user, system, nice, I/O wait, IRQ, steal), context switches, interrupts, fork rate, runnable and blocked tasks, full CPU pressure, frequency driver and governor, turbo state, throttle count, every CPU temperature sensor, and a power profile card.</td>
     <td valign="top"><b>Readout picker.</b> Right-click the chip to choose what lives beside it. Keys 1–4 pick a mode; the choice is saved to your bar layout.</td>
   </tr>
+  <tr>
+    <td colspan="2" valign="top">
+      <img src="docs/about.png" alt="About tab: version badge read from the manifest, licence, and buttons to the source repository and nixfred.com" width="500">
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" valign="top"><b>About.</b> Which build you are running, plus where it came from: the version read straight from <code>manifest.json</code>, the licence, and buttons to the source repository and to nixfred.com. Both addresses are printed in full underneath for when no browser is on hand.</td>
+  </tr>
 </table>
 
 ## What it does
@@ -90,7 +98,7 @@ node tests/test_model.cjs
 omarchy plugin validate .
 ```
 
-Left/right arrows change dashboard tabs. Escape closes. Keys 1–4 select modes in the right-click picker. Inline bar setting `animated: false` disables die animations.
+Left/right arrows change dashboard tabs (Overview, CPU hogs, Processor lab, About). Escape closes. Keys 1–4 select modes in the right-click picker. Inline bar setting `animated: false` disables die animations.
 
 Disable with `omarchy plugin disable nixfred.cpu-pulse` and `systemctl --user disable --now cpu-pulse.service`. This stops only this plugin's telemetry service; historical data stays available. Restore the timestamped `shell.json` backup only if you also intend to restore that earlier layout.
 

@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import socket
 import sqlite3
 import subprocess
@@ -14,6 +15,8 @@ import time
 STATE = Path(os.environ.get('XDG_STATE_HOME') or str(Path.home() / '.local/state')) / 'cpu-pulse'
 ENV_KEYS = {'HERDR_ENV', 'HERDR_SOCKET_PATH', 'HERDR_WORKSPACE_ID', 'HERDR_TAB_ID', 'HERDR_PANE_ID', 'TMUX', 'TMUX_PANE', 'BOOMUX_SHELL_ID'}
 PROFILES = ('power-saver', 'balanced', 'performance')
+LINKS = {'repo': 'https://github.com/nixfred/omacpu',
+         'author': 'https://nixfred.com'}
 SYS_CPU = Path('/sys/devices/system/cpu')
 CLK = os.sysconf('SC_CLK_TCK')
 # Columns of a /proc/stat cpu line. guest and guest_nice are already inside
@@ -420,10 +423,27 @@ def profile(name):
         raise RuntimeError('Profile change refused: '+(result.stderr.strip().splitlines() or ['no reason given'])[-1][:120])
     return {'message': 'Power profile: '+current+' → '+name+'. The clock and temperature will settle over the next few samples.'}
 
+def visit(link):
+    # The panel names a link, it never supplies a URL. Anything reaching
+    # xdg-open is one of the two constants above, so a window title or a
+    # tampered snapshot cannot steer the desktop's URL handler.
+    url = LINKS.get(link)
+    if not url:
+        raise RuntimeError('Unknown link.')
+    if not shutil.which('xdg-open'):
+        raise RuntimeError('No xdg-open on PATH. The address is '+url)
+    # xdg-open can wait on the browser it starts, so it is detached rather than
+    # waited on. That means the handoff is reported, never the page opening --
+    # the About tab prints both addresses in full for when it does not.
+    subprocess.Popen(['xdg-open', url], stdout=subprocess.DEVNULL,
+                     stderr=subprocess.DEVNULL, start_new_session=True)
+    return {'message': 'Handed '+url+' to your browser.'}
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('action', choices=['daemon', 'snapshot', 'focus', 'profile'])
+    parser.add_argument('action', choices=['daemon', 'snapshot', 'focus', 'profile', 'visit'])
     parser.add_argument('args', nargs='*')
+    parser.add_argument('--link', choices=sorted(LINKS))
     args = parser.parse_args()
     os.umask(0o077)
     STATE.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -436,6 +456,8 @@ def main():
             time.sleep(0.5)
             value = metrics(first)
             value['hogs'] = hogs()[0]
+        elif args.action == 'visit':
+            value = visit(args.link)
         elif args.action == 'focus':
             if len(args.args) != 2 or not args.args[0].isdigit():
                 raise RuntimeError('focus needs a PID and a start time.')

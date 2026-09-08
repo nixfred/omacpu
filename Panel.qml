@@ -15,6 +15,7 @@ Panel {
     readonly property string stateDir: (Quickshell.env('XDG_STATE_HOME') || Quickshell.env('HOME')+'/.local/state')+'/cpu-pulse'
     readonly property string helper: decodeURIComponent(String(Qt.resolvedUrl('cpu_pulse.py')).replace(/^file:\/\//,''))
     property var cpu: ({})
+    property string version: ''
     property var histories: ({})
     property int tab: 0
     property int page: 0
@@ -44,8 +45,16 @@ Panel {
         actionProc.command=['python3',helper,action].concat(extra||[])
         actionProc.running=true
     }
+    // The panel names a link; the helper holds the two URLs. Nothing the
+    // snapshot or a window title carries can reach the desktop URL handler.
+    function openLink(name) {
+        if(actionProc.running) return
+        actionStatus='Opening '+name+' in your browser…'
+        actionProc.command=['python3',helper,'visit','--link',name]
+        actionProc.running=true
+    }
     function status() {
-        return JSON.stringify({opened:opened,mode:mode,readout:Model.readout(cpu,mode),tint:String(tint),stale:stale,samples:chart.count || 0,tab:tab,chooseMode:chooseMode,busy:cpu.busyPct,temp:cpu.temp,threads:cpu.threads,hogs:rows.length,profile:cpu.profile,action:actionStatus})
+        return JSON.stringify({opened:opened,version:version,mode:mode,readout:Model.readout(cpu,mode),tint:String(tint),stale:stale,samples:chart.count || 0,tab:tab,chooseMode:chooseMode,busy:cpu.busyPct,temp:cpu.temp,threads:cpu.threads,hogs:rows.length,profile:cpu.profile,action:actionStatus})
     }
     onOpenedChanged: if(opened) { snapshotFile.reload(); historyFile.reload() }
     FileView {
@@ -57,6 +66,10 @@ Panel {
         id:historyFile; path:root.stateDir+'/history.json'; watchChanges:true; printErrors:false
         onFileChanged:reload()
         onLoaded:{try{root.histories=JSON.parse(text())}catch(e){}}
+    }
+    FileView {
+        id:manifestFile; path:String(Qt.resolvedUrl('manifest.json')).replace(/^file:\/\//,''); printErrors:false
+        onLoaded:{try{root.version=String(JSON.parse(text()).version||'')}catch(e){}}
     }
     Timer { interval:3000; running:true; repeat:true; onTriggered:{root.now=Date.now()/1000; if(root.stale)snapshotFile.reload()} }
     Process {
@@ -72,7 +85,7 @@ Panel {
         function status():string {return root.status()}
         function modes():void {root.chooseMode=true;root.open()}
         function display(value:int):void {root.setMode(value)}
-        function showTab(value:int):void {root.tab=Model.clamp(value,0,2);root.chooseMode=false;root.open()}
+        function showTab(value:int):void {root.tab=Model.clamp(value,0,3);root.chooseMode=false;root.open()}
         function historyRange(value:int):void {if([3600,86400,604800].indexOf(value)>=0)root.range=value}
     }
     WidgetButton {
@@ -129,7 +142,7 @@ Panel {
             Keys.onEscapePressed:root.close()
             Keys.onPressed:function(event){
                 if(event.key===Qt.Key_Left && !root.chooseMode){root.tab=Math.max(0,root.tab-1);event.accepted=true}
-                if(event.key===Qt.Key_Right && !root.chooseMode){root.tab=Math.min(2,root.tab+1);event.accepted=true}
+                if(event.key===Qt.Key_Right && !root.chooseMode){root.tab=Math.min(3,root.tab+1);event.accepted=true}
                 if(root.chooseMode && event.key>=Qt.Key_1 && event.key<=Qt.Key_4){root.setMode(event.key-Qt.Key_1);event.accepted=true}
             }
             Rectangle {anchors.fill:parent;anchors.margins:-10;radius:14;color:'#0b141d'}
@@ -166,7 +179,7 @@ Panel {
                     }
                 }
                 Row {spacing:8
-                    Repeater {model:['Overview','CPU hogs','Processor lab']
+                    Repeater {model:['Overview','CPU hogs','Processor lab','About']
                         Action {required property int index;required property string modelData;text:modelData;selected:root.tab===index;onClicked:root.tab=index}
                     }
                 }
@@ -309,6 +322,32 @@ Panel {
                         }
                     }
                     Label{width:parent.width;wrapMode:Text.WordWrap;text:'Breakdown fields sum to 100% of processor time. No process termination, renicing, affinity pinning, frequency locking or privileged tuning is exposed.';font.pixelSize:10}
+                }
+                Column {
+                    width:parent.width;spacing:12;visible:root.tab===3;height:visible?implicitHeight:0
+                    Rectangle {
+                        width:parent.width;height:132;radius:16;border.color:Qt.alpha(root.tint,0.45)
+                        gradient:Gradient {GradientStop{position:0;color:Qt.alpha(root.tint,0.13)}GradientStop{position:1;color:'#111d27'}}
+                        CpuChip {x:14;y:6;width:120;height:120;busy:root.cpu.busyPct || 0;cores:root.coreLoads;tint:root.tint;animate:false}
+                        Column {x:150;y:24;spacing:6
+                            Heading{text:'CPU PULSE';font.pixelSize:22;font.letterSpacing:3}
+                            Label{text:'Your processor, in motion.';font.pixelSize:11}
+                            Row {spacing:8
+                                Rectangle {
+                                    height:24;width:versionText.implicitWidth+18;radius:12
+                                    color:Qt.alpha(root.tint,0.16);border.color:Qt.alpha(root.tint,0.5)
+                                    Text{id:versionText;anchors.centerIn:parent;text:root.version?'v'+root.version:'version unavailable';color:'#e4edf0';font.pixelSize:11;font.bold:true;textFormat:Text.PlainText}
+                                }
+                                Label{text:'MIT · Fred Nix';font.pixelSize:11;anchors.verticalCenter:parent.verticalCenter}
+                            }
+                        }
+                    }
+                    Row {spacing:8
+                        Action{text:'Source code on GitHub →';onClicked:root.openLink('repo')}
+                        Action{text:'nixfred.com →';onClicked:root.openLink('author')}
+                    }
+                    Label{width:parent.width;wrapMode:Text.WordWrap;font.pixelSize:11;text:'github.com/nixfred/omacpu  ·  nixfred.com'}
+                    Label{width:parent.width;wrapMode:Text.WordWrap;font.pixelSize:11;text:'History stays on this machine in a private state directory. CPU Pulse reads unprivileged kernel counters only; it never terminates a process, renices, pins affinity or locks a frequency.'}
                 }
                 Rectangle{width:parent.width;height:1;color:'#25343f'}
                 Label{width:parent.width;wrapMode:Text.WordWrap;font.pixelSize:10;color:root.stale?'#f0ba82':'#a4b9c3';text:root.actionStatus || (root.stale?'Telemetry is offline. Check the cpu-pulse user service.': 'LIVE · updated '+Qt.formatTime(new Date(root.cpu.ts*1000),'h:mm:ss AP')+'  ·  History stays on this machine  ·  Esc closes')}

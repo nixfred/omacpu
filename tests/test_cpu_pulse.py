@@ -257,6 +257,34 @@ class CpuTests(unittest.TestCase):
             self.assertEqual(sub.call_args.args[0], ['powerprofilesctl', 'set', 'performance'])
             self.assertNotIn('shell', sub.call_args.kwargs)
 
+    def test_about_links_are_a_fixed_allowlist(self):
+        self.assertEqual(sorted(cpu.LINKS), ['author', 'repo'])
+        for url in cpu.LINKS.values():
+            self.assertTrue(url.startswith('https://'), url)
+        with patch.object(cpu.subprocess, 'Popen') as popen, patch.object(cpu.shutil, 'which', return_value='/usr/bin/xdg-open'):
+            for name in ('', 'nope', None, 'https://example.invalid'):
+                with self.subTest(link=name), self.assertRaises(RuntimeError):
+                    cpu.visit(name)
+            popen.assert_not_called()
+            self.assertIn(cpu.LINKS['repo'], cpu.visit('repo')['message'])
+            popen.assert_called_once()
+            self.assertEqual(popen.call_args.args[0], ['xdg-open', cpu.LINKS['repo']])
+
+    def test_visit_reports_the_address_when_no_handler_exists(self):
+        with patch.object(cpu.shutil, 'which', return_value=None), patch.object(cpu.subprocess, 'Popen') as popen:
+            with self.assertRaises(RuntimeError) as caught:
+                cpu.visit('author')
+            self.assertIn(cpu.LINKS['author'], str(caught.exception))
+            popen.assert_not_called()
+
+    def test_manifest_version_is_the_single_source_the_panel_reads(self):
+        root = Path(cpu.__file__).resolve().parent
+        manifest = json.loads((root / 'manifest.json').read_text())
+        self.assertRegex(manifest['version'], r'^\d+\.\d+\.\d+$')
+        panel = (root / 'Panel.qml').read_text()
+        self.assertIn("Qt.resolvedUrl('manifest.json')", panel)
+        self.assertNotIn(manifest['version'], panel)
+
     def test_unknown_action_rejected(self):
         import subprocess
         p = subprocess.run(['python3', str(Path(cpu.__file__)), 'kill'], capture_output=True)

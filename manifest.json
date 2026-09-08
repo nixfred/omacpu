@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "nixfred.cpu-pulse",
   "name": "CPU Pulse",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "Fred Nix",
   "license": "MIT",
   "description": "A living processor die: per-thread load, clocks, temperature, CPU pressure, seven-day history, and focus-only CPU hogs.",
