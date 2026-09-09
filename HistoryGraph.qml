@@ -6,6 +6,14 @@ Item {
     property var historyData: ({points:[], seconds:3600, now:0, bucket:15})
     property color tint: '#43f2a1'
     property color heat: '#ffa86b'
+    // Chrome is handed down by the panel so the graph follows the Omarchy
+    // theme. The defaults keep it standalone for the widget tests, which
+    // instantiate it without the shell singletons. Gridlines, axis labels and
+    // the hover chip are all derived from `ink` so one colour drives the lot.
+    property color ink: '#edf5f7'
+    property color surface: '#17232d'
+    readonly property color grid: Qt.alpha(ink, 0.17)
+    readonly property color axis: Qt.alpha(ink, 0.58)
     property int hoverIndex: -1
     readonly property var points: historyData.points || []
     readonly property var hoverPoint: points[hoverIndex] || null
@@ -14,6 +22,8 @@ Item {
     function repaint() { if (root.visible) graph.requestPaint() }
     onHistoryDataChanged: { hoverIndex=-1; repaint() }
     onTintChanged: repaint()
+    onHeatChanged: repaint()
+    onInkChanged: repaint()
     onVisibleChanged: repaint()
     Canvas {
         id: graph
@@ -26,8 +36,8 @@ Item {
             c.font='10px sans-serif';c.textAlign='right'
             for(var line=0;line<=4;line++){
                 var y=8+(h-8)*line/4
-                c.strokeStyle='#233039';c.lineWidth=1;c.beginPath();c.moveTo(0,y);c.lineTo(w,y);c.stroke()
-                c.fillStyle='#7e959f';c.fillText(String(100-line*25),width,y+3)
+                c.strokeStyle=root.grid;c.lineWidth=1;c.beginPath();c.moveTo(0,y);c.lineTo(w,y);c.stroke()
+                c.fillStyle=root.axis;c.fillText(String(100-line*25),width,y+3)
             }
             function xAt(p){return w*(p[0]-(root.historyData.now-root.historyData.seconds))/root.historyData.seconds}
             function yAt(v){return 8+(h-8)*(1-Model.clamp(v,0,100)/100)}
@@ -50,21 +60,21 @@ Item {
                 var last=pts[pts.length-1]
                 c.fillStyle=root.tint;c.beginPath();c.arc(xAt(last),yAt(last[1]),3,0,Math.PI*2);c.fill()
             }
-            c.fillStyle='#7e959f';c.textAlign='left';c.fillText(root.historyData.seconds===3600?'1 hour ago':root.historyData.seconds===86400?'24 hours ago':'7 days ago',0,height-3)
+            c.fillStyle=root.axis;c.textAlign='left';c.fillText(root.historyData.seconds===3600?'1 hour ago':root.historyData.seconds===86400?'24 hours ago':'7 days ago',0,height-3)
             c.textAlign='right';c.fillText('now',w,height-3)
         }
     }
     Rectangle {
         visible: root.hoverPoint !== null
         x: root.hoverPoint ? Math.max(0,Math.min(parent.width-38,(root.hoverPoint[0]-(root.historyData.now-root.historyData.seconds))/root.historyData.seconds*(parent.width-38))) : 0
-        y: 8; width: 1; height: parent.height-34; color: '#71878f'
+        y: 8; width: 1; height: parent.height-34; color: root.axis
     }
     Rectangle {
         visible: root.hoverPoint !== null
         anchors.top: parent.top; anchors.horizontalCenter: parent.horizontalCenter
-        width: hoverText.implicitWidth+20; height: 27; radius: 7; color:'#17232d';border.color:'#40525f'
+        width: hoverText.implicitWidth+20; height: 27; radius: 7; color:root.surface;border.color:Qt.alpha(root.ink,0.32)
         Text {
-            id: hoverText; anchors.centerIn:parent; color:'#edf5f7';font.pixelSize:11
+            id: hoverText; anchors.centerIn:parent; color:root.ink;font.pixelSize:11
             text: {
                 var p=root.hoverPoint
                 if(!p) return ''

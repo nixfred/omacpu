@@ -67,6 +67,7 @@ CPU Pulse is the sibling of [RAM Pulse](https://github.com/nixfred/ram.plugin.om
 - Every thread: load bar, delivered clock and core temperature for each logical CPU.
 - Top 24 processes by CPU time. Exact Boomux terminal titles can resolve an existing terminal too. Browser children focus their browser window, not an individual tab.
 - Power profile switching through `powerprofilesctl` (power-saver, balanced, performance). This goes through power-profiles-daemon and polkit as the session user and is immediately reversible from the same card.
+- Follows the active Omarchy theme. Panel, cards, borders, text and buttons resolve from the theme's popup surface and control states, and the die and history traces take the theme's own red, yellow and green.
 
 There are no process termination, renice, affinity, frequency locking, or privileged tuning actions. Processes and window identities are revalidated on every focus click. Session routing uses argument arrays and validated IDs, never interpolated shell commands. Profile names are checked against a fixed list. No process command lines or credentials are saved.
 
@@ -101,6 +102,14 @@ omarchy plugin validate .
 Left/right arrows change dashboard tabs (Overview, CPU hogs, Processor lab, About). Escape closes. Keys 1–4 select modes in the right-click picker. Inline bar setting `animated: false` disables die animations.
 
 Disable with `omarchy plugin disable nixfred.cpu-pulse` and `systemctl --user disable --now cpu-pulse.service`. This stops only this plugin's telemetry service; historical data stays available. Restore the timestamped `shell.json` backup only if you also intend to restore that earlier layout.
+
+## Theming
+
+Every colour resolves from the active Omarchy theme, and a theme switch is picked up live. Chrome comes from the shell's own roles: the panel sits directly on the themed popup surface, text is the popup text role at varying strength, and buttons use the shell control-state fills, so a theme that tunes hover or selection tunes this panel with it.
+
+The load ramp is data rather than decoration, so it is handled separately. The shell surfaces only foreground, background, accent, urgent and muted, so the green and yellow the die needs are read from the theme's own `colors.toml`, by name or from the `color1` / `color2` / `color3` terminal slots.
+
+A theme's three colours are used only when they stay far enough apart to still read as a scale, measured as a weighted RGB distance with a floor of 80. Of the 18 installed themes that ship a palette, three fall below it and keep the built-in dark red through yellow to green instead. `blue-red-4k-warm` scores 2, its yellow `#e99b8c` and green `#ea9b8c` differing by a single step of red; `2-haxorz` and `japan-night` score 59 across three desaturated tones that all read as one grey-brown. Without the floor the die would look the same busy as idle on those themes.
 
 ## Accounting
 

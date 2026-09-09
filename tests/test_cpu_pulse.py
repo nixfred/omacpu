@@ -1,6 +1,7 @@
 import importlib.util
 import json
 from pathlib import Path
+import re
 import runpy
 from types import SimpleNamespace
 import tempfile
@@ -284,6 +285,20 @@ class CpuTests(unittest.TestCase):
         panel = (root / 'Panel.qml').read_text()
         self.assertIn("Qt.resolvedUrl('manifest.json')", panel)
         self.assertNotIn(manifest['version'], panel)
+
+    def test_panel_chrome_carries_no_hardcoded_colours(self):
+        # The dashboard resolves every colour from the active Omarchy theme.
+        # CpuChip and HistoryGraph keep literal defaults on purpose so the
+        # widget tests can instantiate them without the shell singletons, but
+        # only as property defaults -- never inside the drawing code.
+        root = Path(cpu.__file__).resolve().parent
+        self.assertEqual(re.findall(r"'#[0-9a-fA-F]{3,8}'", (root / 'Panel.qml').read_text()), [])
+        for name in ('CpuChip.qml', 'HistoryGraph.qml'):
+            literals = [line.strip() for line in (root / name).read_text().splitlines()
+                        if re.search(r"'#[0-9a-fA-F]{6}'", line)]
+            self.assertTrue(literals, name)
+            for line in literals:
+                self.assertRegex(line, r"^property color \w+: '#[0-9a-fA-F]{6}'$", name + ': ' + line)
 
     def test_unknown_action_rejected(self):
         import subprocess

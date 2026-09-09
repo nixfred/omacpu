@@ -10,7 +10,13 @@ Item {
     property var cores: []
     property bool animate: true
     property bool compact: false
-    property color tint: Model.ramp(100 - busy)
+    property color tint: Model.ramp(100 - busy, stops)
+    // Ramp stops and the two surface colours are handed down by the panel so
+    // the die follows the Omarchy theme. The defaults keep it standalone for
+    // the widget tests, which instantiate it without the shell singletons.
+    property var stops: null
+    property color dieFill: '#0b141b'
+    property color glint: '#ffffff'
     property real phase: 0
     property real level: busy / 100
     property var shown: []
@@ -31,6 +37,8 @@ Item {
     }
     function repaint() { if (root.visible) canvas.requestPaint() }
     onTintChanged: repaint()
+    onDieFillChanged: repaint()
+    onGlintChanged: repaint()
     onLevelChanged: repaint()
     onCoresChanged: repaint()
     onAnimateChanged: repaint()
@@ -57,7 +65,7 @@ Item {
                     c.arc(cx,cy,body*(0.78+ring*0.12),ang,ang+0.42);c.stroke()
                 }
             }
-            c.fillStyle='#0b141b'; c.strokeStyle=root.tint; c.lineWidth=root.compact?1.2:2
+            c.fillStyle=root.dieFill; c.strokeStyle=root.tint; c.lineWidth=root.compact?1.2:2
             c.fillRect(x,y,body,body)
             c.shadowColor=root.tint; c.shadowBlur=root.compact?5:12
             c.strokeRect(x,y,body,body); c.shadowBlur=0
@@ -76,14 +84,14 @@ Item {
                 c.fillStyle=Qt.alpha(root.tint,0.10+0.80*v)
                 c.fillRect(px,py,cw,ch)
                 if(!root.compact && v>0.5){
-                    c.fillStyle=Qt.alpha('#ffffff',(v-0.5)*0.5)
+                    c.fillStyle=Qt.alpha(root.glint,(v-0.5)*0.5)
                     c.fillRect(px+cw*0.3,py+ch*0.3,cw*0.4,ch*0.4)
                 }
             }
             // Clock beam: sweeps the die at a pace that quickens with load.
             var sweep=((root.phase*(1+root.level*2))%1)*(body+16)-8
             var beam=c.createLinearGradient(x+sweep-8,0,x+sweep+8,0)
-            beam.addColorStop(0,'transparent'); beam.addColorStop(0.5,Qt.alpha('#ffffff',root.compact?0.28:0.36)); beam.addColorStop(1,'transparent')
+            beam.addColorStop(0,'transparent'); beam.addColorStop(0.5,Qt.alpha(root.glint,root.compact?0.28:0.36)); beam.addColorStop(1,'transparent')
             c.fillStyle=beam; c.fillRect(x+sweep-8,y,16,body)
             c.strokeStyle=Qt.alpha(root.tint,0.35);c.lineWidth=0.8
             for(var line=1;line<4;line++){ c.beginPath();c.moveTo(x,y+body*line/4);c.lineTo(x+body,y+body*line/4);c.stroke() }
