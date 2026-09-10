@@ -109,7 +109,9 @@ Every colour resolves from the active Omarchy theme, and a theme switch is picke
 
 The load ramp is data rather than decoration, so it is handled separately. The shell surfaces only foreground, background, accent, urgent and muted, so the green and yellow the die needs are read from the theme's own `colors.toml`, by name or from the `color1` / `color2` / `color3` terminal slots.
 
-A theme's three colours are used only when they stay far enough apart to still read as a scale, measured as a weighted RGB distance with a floor of 80. Of the 18 installed themes that ship a palette, three fall below it and keep the built-in dark red through yellow to green instead. `blue-red-4k-warm` scores 2, its yellow `#e99b8c` and green `#ea9b8c` differing by a single step of red; `2-haxorz` and `japan-night` score 59 across three desaturated tones that all read as one grey-brown. Without the floor the die would look the same busy as idle on those themes.
+Half the themes on a typical machine ship the right three hues at the wrong three saturations, so each stop is first lifted: it keeps the hue the theme chose and is raised to a readable chroma, with a deliberately wide lightness band that rescues a stop too dark or too pale to see without second-guessing a theme that picked a bright red on purpose. A stop with almost no chroma has no hue worth preserving and borrows the built-in one. Stops already above the floor pass through untouched.
+
+Only then are the three measured against each other, as a weighted RGB distance with a floor of 80. Lifting first matters: `2-haxorz` scores 59 raw and was rejected outright, yet its three hues sit 14, 85 and 178 degrees apart and only its chroma was missing. Measured after lifting it passes, and the die follows the theme instead of falling back. What still fails is genuinely one colour rather than three: `blue-red-4k-warm` scores 2 because its yellow `#e99b8c` and green `#ea9b8c` differ by a single step of red, and no amount of saturation pulls those apart. Of the 40 themes installed here, 36 now use their own palette and 4 keep the built-in ramp.
 
 ## Accounting
 

@@ -28,17 +28,39 @@ same(ctx.parsePalette(slots),{red:'#FF5964',yellow:'#F6C84D',green:'#8BCB68'});
 assert.equal(ctx.parsePalette(named+`color1 = "#000000"\n`).red,'#FF5964');
 same(ctx.parsePalette(''),{});
 
-// A well-separated theme replaces the built-in ramp outright.
-same(ctx.rampStops(named),[[255,89,100],[246,200,77],[139,203,104]]);
-const eternia=ctx.ramp(50,ctx.rampStops(named));
+// A well-separated theme replaces the built-in ramp outright. A stop already
+// above the chroma floor passes through untouched -- red and yellow here are
+// exactly what the theme wrote.
+const namedStops=ctx.rampStops(named);
+same(namedStops[0],[255,89,100]);
+same(namedStops[1],[246,200,77]);
+const eternia=ctx.ramp(50,namedStops);
 same(eternia.slice(0,3).map(v=>Math.round(v*255)),[246,200,77]);
+// Its green sits at 0.49 saturation, just under the floor, so it is nudged up
+// rather than passed through or thrown away.
+same(namedStops[2],[137,209,98]);
 
-// Three near-identical tones do not. Without this guard the die would look the
-// same busy as idle on 2-haxorz, japan-night and blue-red-4k-warm.
+// A theme whose stops are muted but genuinely different hues is lifted, not
+// rejected: 2-haxorz's three sit 14, 85 and 178 degrees apart and only its
+// chroma was missing. Rejecting it wholesale left the die off-theme.
 const muddy=`red = "#b9968f"\nyellow = "#7b8768"\ngreen = "#708c8b"\n`;
+const lifted=ctx.rampStops(muddy);
+assert.notEqual(lifted,ctx.DEFAULT_STOPS);
+same(lifted,[[214,131,114],[134,185,54],[57,195,131]]);
+assert.ok(ctx.separation(lifted[0],lifted[1])>=80);
+assert.ok(ctx.separation(lifted[1],lifted[2])>=80);
+
+// Stops that are one colour stay rejected, because no amount of saturation
+// pulls them apart: blue-red-4k-warm's yellow and green differ by one step of
+// red.
 const oneStep=`red = "#b88485"\nyellow = "#e99b8c"\ngreen = "#ea9b8c"\n`;
-assert.equal(ctx.rampStops(muddy),ctx.DEFAULT_STOPS);
 assert.equal(ctx.rampStops(oneStep),ctx.DEFAULT_STOPS);
+
+// A greyscale theme has no hue to preserve and borrows the built-in hues.
+const grey=`red = "#8a8a8a"\nyellow = "#a0a0a0"\ngreen = "#b4b4b4"\n`;
+const greyStops=ctx.rampStops(grey);
+assert.notEqual(greyStops,ctx.DEFAULT_STOPS);
+assert.ok(ctx.separation(greyStops[0],greyStops[1])>=80);
 // A partial palette is not a palette.
 assert.equal(ctx.rampStops(`red = "#FF5964"\ngreen = "#8BCB68"\n`),ctx.DEFAULT_STOPS);
 assert.equal(ctx.rampStops(''),ctx.DEFAULT_STOPS);
@@ -57,9 +79,11 @@ assert.equal(ctx.heatColor('',null),ctx.DEFAULT_HEAT);
 // Every installed theme is either usable as a ramp or falls back cleanly; none
 // may produce a partial or malformed set of stops. Skipped where no themes are
 // installed, so the suite still runs on a bare checkout.
-const themeDir=path.join(os.homedir(),'.config/omarchy/themes');
+// Both directories: the user's own themes and the ones Omarchy installs.
+// Checking only the first misses more than half of them.
 let checked=0;
-if(fs.existsSync(themeDir)){
+for(const themeDir of [path.join(os.homedir(),'.config/omarchy/themes'),'/usr/share/omarchy/themes']){
+  if(!fs.existsSync(themeDir)) continue;
   for(const name of fs.readdirSync(themeDir)){
     const file=path.join(themeDir,name,'colors.toml');
     if(!fs.existsSync(file)) continue;

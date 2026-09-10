@@ -12,13 +12,31 @@ var PALETTE_ALIASES = {red: ['red', 'color1'], yellow: ['yellow', 'color3'],
                        green: ['green', 'color2'], orange: ['orange', 'color11']}
 
 // How far apart the ramp's three stops must sit before a theme's own colours
-// replace the built-in ones. Chosen from the 18 installed themes that ship a
-// palette: their worst adjacent separations run 2, 59, 59, 91, 106, ... so a
-// floor of 80 rejects exactly the three that would break the die and keeps the
-// other fifteen. blue-red-4k-warm scores 2 -- its yellow (#e99b8c) and green
-// (#ea9b8c) differ by one step of red -- and 2-haxorz and japan-night score 59
-// across three desaturated tones that all read as the same grey-brown.
+// replace the built-in ones. Chosen from the installed themes that ship a
+// palette: their worst adjacent separations run 2, 59, 59, 91, 106, ...  so a
+// floor of 80 rejects the handful that would break the die.
+//
+// Separation is measured after lifting, not before. A theme like 2-haxorz
+// scores 59 raw -- three desaturated tones that all read as the same
+// grey-brown -- yet its three hues are 14, 85 and 178 degrees apart and only
+// its chroma was missing. Rejecting it wholesale threw away a usable palette;
+// lifting it first and then measuring keeps the theme's own hues. What still
+// fails after lifting genuinely is one colour: blue-red-4k-warm scores 2
+// because its yellow (#e99b8c) and green (#ea9b8c) differ by one step of red,
+// and no amount of saturation will pull those apart.
 var RAMP_SEPARATION_MIN = 80
+
+// Chroma the ramp needs to read as a warning at a glance. A stop below the hue
+// floor has no hue worth preserving and borrows the built-in one rather than
+// tinting grey at random.
+//
+// The lightness band is deliberately wide. Its job is to rescue a stop so dark
+// or so pale it disappears, not to second-guess a theme that chose a bright
+// red on purpose; a narrower band dimmed perfectly good vivid palettes.
+var RAMP_MIN_SAT = 0.55
+var RAMP_MIN_LIGHT = 0.30
+var RAMP_MAX_LIGHT = 0.78
+var RAMP_HUE_FLOOR = 0.12
 
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, Number(v) || 0)) }
 
@@ -55,12 +73,55 @@ function parsePalette(raw) {
     return out
 }
 
-// Three stops for the load ramp, from the theme when they survive the
-// separation floor and from DEFAULT_STOPS when they do not.
+function rgbToHsl(r, g, b) {
+    r /= 255; g /= 255; b /= 255
+    var mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, h = 0, s = 0
+    if (mx !== mn) {
+        var d = mx - mn
+        s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn)
+        if (mx === r) h = (g - b) / d + (g < b ? 6 : 0)
+        else if (mx === g) h = (b - r) / d + 2
+        else h = (r - g) / d + 4
+        h /= 6
+    }
+    return [h, s, l]
+}
+
+function hslToRgb(h, s, l) {
+    if (s === 0) return [Math.round(l * 255), Math.round(l * 255), Math.round(l * 255)]
+    var hi = l < 0.5 ? l * (1 + s) : l + s - l * s
+    var lo = 2 * l - hi
+    function channel(t) {
+        if (t < 0) t += 1
+        if (t > 1) t -= 1
+        if (t < 1/6) return lo + (hi - lo) * 6 * t
+        if (t < 1/2) return hi
+        if (t < 2/3) return lo + (hi - lo) * (2/3 - t) * 6
+        return lo
+    }
+    return [Math.round(channel(h + 1/3) * 255), Math.round(channel(h) * 255), Math.round(channel(h - 1/3) * 255)]
+}
+
+// Raise one stop to the chroma and lightness the ramp needs while keeping the
+// hue the theme chose. Half the installed themes ship a palette that is the
+// right three hues at the wrong three saturations.
+function liftStop(rgb, builtin) {
+    var a = rgbToHsl(rgb[0], rgb[1], rgb[2])
+    var b = rgbToHsl(builtin[0], builtin[1], builtin[2])
+    var hue = a[1] < RAMP_HUE_FLOOR ? b[0] : a[0]
+    return hslToRgb(hue, Math.max(a[1], RAMP_MIN_SAT),
+                    Math.min(Math.max(a[2], RAMP_MIN_LIGHT), RAMP_MAX_LIGHT))
+}
+
+// Three stops for the load ramp: the theme's own hues, lifted to a readable
+// chroma, and DEFAULT_STOPS only when even lifted they do not separate.
 function rampStops(raw) {
     var palette = parsePalette(raw)
     var low = hexToRgb(palette.red), mid = hexToRgb(palette.yellow), high = hexToRgb(palette.green)
     if (!low || !mid || !high) return DEFAULT_STOPS
+    low = liftStop(low, DEFAULT_STOPS[0])
+    mid = liftStop(mid, DEFAULT_STOPS[1])
+    high = liftStop(high, DEFAULT_STOPS[2])
     if (separation(low, mid) < RAMP_SEPARATION_MIN) return DEFAULT_STOPS
     if (separation(mid, high) < RAMP_SEPARATION_MIN) return DEFAULT_STOPS
     return [low, mid, high]
