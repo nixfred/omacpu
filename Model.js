@@ -27,8 +27,11 @@ var PALETTE_ALIASES = {red: ['red', 'color1'], yellow: ['yellow', 'color3'],
 var RAMP_SEPARATION_MIN = 80
 
 // Chroma the ramp needs to read as a warning at a glance. A stop below the hue
-// floor has no hue worth preserving and borrows the built-in one rather than
-// tinting grey at random.
+// floor has no hue at all and borrows the built-in one rather than tinting grey
+// at random. The floor sits just above zero on purpose: across the 40 installed
+// themes only vantablack and white score exactly 0.000, and the next lowest
+// stop is 0.041, so anything higher hijacks a faint but perfectly real hue. A
+// floor of 0.12 rotated ethereal's green 26 degrees onto the built-in one.
 //
 // The lightness band is deliberately wide. Its job is to rescue a stop so dark
 // or so pale it disappears, not to second-guess a theme that chose a bright
@@ -36,7 +39,7 @@ var RAMP_SEPARATION_MIN = 80
 var RAMP_MIN_SAT = 0.55
 var RAMP_MIN_LIGHT = 0.30
 var RAMP_MAX_LIGHT = 0.78
-var RAMP_HUE_FLOOR = 0.12
+var RAMP_HUE_FLOOR = 0.02
 
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, Number(v) || 0)) }
 

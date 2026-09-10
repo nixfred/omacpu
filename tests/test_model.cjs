@@ -46,7 +46,7 @@ same(namedStops[2],[137,209,98]);
 const muddy=`red = "#b9968f"\nyellow = "#7b8768"\ngreen = "#708c8b"\n`;
 const lifted=ctx.rampStops(muddy);
 assert.notEqual(lifted,ctx.DEFAULT_STOPS);
-same(lifted,[[214,131,114],[134,185,54],[57,195,131]]);
+same(lifted,[[214,131,114],[134,185,54],[57,195,190]]);
 assert.ok(ctx.separation(lifted[0],lifted[1])>=80);
 assert.ok(ctx.separation(lifted[1],lifted[2])>=80);
 
